@@ -1,6 +1,4 @@
 using System.Drawing.Drawing2D;
-using System.Runtime.CompilerServices;
-using System.Linq;
 
 namespace WaveFunctionCollapse {
     public partial class FormMain : Form {
@@ -13,8 +11,8 @@ namespace WaveFunctionCollapse {
         readonly List<Tile> tiles = new();
 
         int scale = 2;
-        int gridWidth = 66;
-        int gridHeight = 38;
+        int gridWidth = 68;
+        int gridHeight = 39;
         Cell[,] grid;
 
         public FormMain() {
@@ -32,30 +30,16 @@ namespace WaveFunctionCollapse {
         }
 
         private void FormMain_Load(object sender, EventArgs e) {
-            foreach(FileInfo file in (new DirectoryInfo("../../samples/circuit").GetFiles("*.png"))) {
-                tiles.AddRange(TilesFactory.GenerateTiles(file.FullName));
-            }
+            LoadTiles("circuit");
+            InitGrid();
+            RendererLoop();
+            GeneratorLoop();            
+        }
 
-            grid = new Cell[gridWidth, gridHeight];
-            for(int y = 0; y < gridHeight; y++) {
-                for(int x = 0; x < gridWidth; x++) {
-                    grid[x, y] = new Cell() {
-                        Position = new Point(x, y),
-                        Entropy = tiles.Count
-                    };
-                }
-            }
-
-            Task.Run(() => {
-                while(true) {
-                    this.Invalidate();
-                    Thread.Sleep(30);
-                }
-            });
-
+        private void GeneratorLoop() {
             if(mode == Modes.Generator) {
                 int f = 0;
-                int mf = tiles.Count / 4;
+                int mf = tiles.Count / 6;
 
                 Task.Run(() => {
                     Random rnd = new();
@@ -104,6 +88,33 @@ namespace WaveFunctionCollapse {
                         f = (f + 1) % mf;
                     }
                 });
+            }
+        }
+
+        private void RendererLoop() {
+            Task.Run(() => {
+                while(true) {
+                    this.Invalidate();
+                    Thread.Sleep(30);
+                }
+            });
+        }
+
+        private void InitGrid() {
+            grid = new Cell[gridWidth, gridHeight];
+            for(int y = 0; y < gridHeight; y++) {
+                for(int x = 0; x < gridWidth; x++) {
+                    grid[x, y] = new Cell() {
+                        Position = new Point(x, y),
+                        Entropy = tiles.Count
+                    };
+                }
+            }
+        }
+
+        private void LoadTiles(string set) {
+            foreach(FileInfo file in (new DirectoryInfo($"../../samples/{set}").GetFiles("*.png"))) {
+                tiles.AddRange(TilesFactory.GenerateTiles(file.FullName));
             }
         }
 
