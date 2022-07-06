@@ -1,4 +1,6 @@
 using System.Drawing.Drawing2D;
+using System.Runtime.CompilerServices;
+using System.Linq;
 
 namespace WaveFunctionCollapse {
     public partial class FormMain : Form {
@@ -10,16 +12,10 @@ namespace WaveFunctionCollapse {
         Modes mode = Modes.Generator;
         readonly List<Tile> tiles = new();
 
-        class Cell {
-            public Tile Tile;
-            public int Entropy;
-            public bool Collapsed;
-            public int Index;
-        }
-
         int scale = 2;
-        int gridSize = 38;
-        Cell[] grid;
+        int gridWidth = 66;
+        int gridHeight = 38;
+        Cell[,] grid;
 
         public FormMain() {
             InitializeComponent();
@@ -40,13 +36,14 @@ namespace WaveFunctionCollapse {
                 tiles.AddRange(TilesFactory.GenerateTiles(file.FullName));
             }
 
-            grid = new Cell[gridSize * gridSize];
-            for(int i = 0; i < grid.Length; i++) {
-                Cell c = new() {
-                    Index = i,
-                    Entropy = tiles.Count
-                };
-                grid[i] = c;
+            grid = new Cell[gridWidth, gridHeight];
+            for(int y = 0; y < gridHeight; y++) {
+                for(int x = 0; x < gridWidth; x++) {
+                    grid[x, y] = new Cell() {
+                        Position = new Point(x, y),
+                        Entropy = tiles.Count
+                    };
+                }
             }
 
             Task.Run(() => {
@@ -64,18 +61,17 @@ namespace WaveFunctionCollapse {
                     Random rnd = new();
 
                     while(true) {
-                        Cell[] avCells = (from cell in grid
-                                          where !cell.Collapsed
-                                          orderby cell.Entropy ascending
-                                          select cell).ToArray();
+                        List<Cell> avCells = new();
+                        foreach(var c in grid) if(!c.Collapsed) avCells.Add(c);
+                        avCells.Sort((c1, c2) => c1.Entropy - c2.Entropy);
 
-                        if(avCells.Length > 0) {
+                        if(avCells.Count > 0) {
                             int minEntropy = avCells[0].Entropy;
-                            avCells = avCells.Where(c => c.Entropy == minEntropy).ToArray();
+                            avCells = avCells.Where(c => c.Entropy == minEntropy).ToList();
                             List<int> triedTiles = new();
 
                             while(true) {
-                                Cell selCell = avCells[rnd.Next(avCells.Length)];
+                                Cell selCell = avCells[rnd.Next(avCells.Count)];
                                 List<(Cell cell, int d)> srndCells = GetSurroundingCells(selCell);
 
                                 int ti = rnd.Next(tiles.Count);
@@ -85,15 +81,7 @@ namespace WaveFunctionCollapse {
                                 Tile t = tiles[ti];
 
                                 if(CanFit(t, srndCells)) {
-                                    foreach((Cell cell, int d) sr1 in srndCells) {
-                                        sr1.cell.Entropy -= 3;
-                                        foreach((Cell cell, int d) sr2 in GetSurroundingCells(sr1.cell)) {
-                                            sr2.cell.Entropy -= 2;
-                                            foreach((Cell cell, int d) sr3 in GetSurroundingCells(sr2.cell)) {
-                                                sr3.cell.Entropy -= 1;
-                                            }
-                                        }
-                                    }
+                                    AdjustEntropy(srndCells, 2);
 
                                     selCell.Tile = t;
                                     selCell.Collapsed = true;
@@ -116,6 +104,15 @@ namespace WaveFunctionCollapse {
                         f = (f + 1) % mf;
                     }
                 });
+            }
+        }
+
+        private void AdjustEntropy(List<(Cell cell, int d)> srndCells, int e = 3) {
+            if(e == 0) return;
+
+            foreach((Cell cell, int d) sr1 in srndCells) {
+                sr1.cell.Entropy -= e;
+                AdjustEntropy(GetSurroundingCells(sr1.cell), e - 1);
             }
         }
 
@@ -152,16 +149,12 @@ namespace WaveFunctionCollapse {
                 (-1, 0)
             };
 
-            int y0 = selCell.Index / gridSize;
-            int x0 = selCell.Index - y0 * gridSize;
-
             for(int i = 0; i < indexes.Length; i++) {
-                int x = x0 + indexes[i].x;
-                int y = y0 + indexes[i].y;
+                int x = selCell.Position.X + indexes[i].x;
+                int y = selCell.Position.Y + indexes[i].y;
 
-                if(x >= 0 && x < gridSize && y >= 0 && y < gridSize) {
-                    Cell cell = grid[x + y * gridSize];
-                    cells.Add((cell, i));
+                if(x >= 0 && x < gridWidth && y >= 0 && y < gridHeight) {
+                    cells.Add((grid[x, y], i));
                 }
             }
 
@@ -178,23 +171,16 @@ namespace WaveFunctionCollapse {
 
             switch(mode) {
                 case Modes.Generator:
-                    // Draw Collapsed Cells
-                    for(int i = 0; i < grid.Length; i++) {
-                        if(grid[i].Collapsed) {
-                            int y = i / gridSize;
-                            int x = i - y * gridSize;
+                    for(int y = 0; y < gridHeight; y++) {
+                        for(int x = 0; x < gridWidth; x++) {
+                            if(grid[x, y].Collapsed) {
+                                g.DrawImage(grid[x, y].Tile.Bitmap,
+                                    x * w * scale + 1,
+                                    y * h * scale + 1,
+                                    w * scale + scale / 2,
+                                    h * scale + scale / 2);
+                            }
 
-                            g.DrawImage(grid[i].Tile.Bitmap,
-                                x * w * scale + 1,
-                                y * h * scale + 1,
-                                w * scale + scale / 2,
-                                h * scale + scale / 2);
-                        }
-                    }
-
-                    // Draw Grid
-                    for(int y = 0; y < gridSize; y++) {
-                        for(int x = 0; x < gridSize; x++) {
                             g.DrawRectangle(Pens.Black,
                                 x * w * scale,
                                 y * h * scale,
