@@ -39,7 +39,7 @@ namespace WaveFunctionCollapse {
         private void GeneratorLoop() {
             if(mode == Modes.Generator) {
                 int f = 0;
-                int mf = tiles.Count / 6;
+                int mf = tiles.Count / 8;
 
                 Task.Run(() => {
                     Random rnd = new();
@@ -75,7 +75,7 @@ namespace WaveFunctionCollapse {
                                     (Cell cell, int d) tc = srndCells[rnd.Next(srndCells.Count)];
 
                                     tc.cell.Collapsed = false;
-                                    tc.cell.Entropy = tiles.Count - GetSurroundingCells(tc.cell).Count;
+                                    tc.cell.Entropy = tiles.Count - GetSurroundingCells(tc.cell).Count + 1;
 
                                     break;
                                 }
@@ -212,7 +212,7 @@ namespace WaveFunctionCollapse {
                             lastName = name;
                             int i = (w - 2) * scale;
 
-                            var rotations = from t in tiles where t.FileName.StartsWith(name) select t;
+                            var rotations = from t in tiles where t.FileName.StartsWith(name + ".") select t;
                             foreach(var r in rotations) {
                                 g.DrawImage(r.Bitmap, i, j, w * scale, h * scale);
                                 i += w * scale + (h - 2) * scale;

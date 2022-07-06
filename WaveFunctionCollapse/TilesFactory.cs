@@ -3,16 +3,17 @@
         static public double Tolerance = 0.35;
         static readonly List<int[]> ColorsLUT = new();
 
-        public static List<Tile> GenerateTiles(string fileName) {
-            List<Tile> tiles = new();
-            RotateFlipType[] rotations = {
+        static RotateFlipType[] rotations = {
                 RotateFlipType.RotateNoneFlipNone,
                 RotateFlipType.Rotate90FlipNone,
                 RotateFlipType.Rotate180FlipNone,
                 RotateFlipType.Rotate270FlipNone,
                 RotateFlipType.RotateNoneFlipX,
                 RotateFlipType.RotateNoneFlipY
-            };
+        };
+
+        public static List<Tile> GenerateTiles(string fileName) {
+            List<Tile> tiles = new();
 
             for(int i = 0; i < rotations.Length; i++) {
                 using(Bitmap bmp = (Bitmap)Image.FromFile(fileName)) {
@@ -25,6 +26,8 @@
                     }
                 }
             }
+
+            tiles.ForEach(t => t.Rotations = tiles.Count);
 
             return tiles;
         }
@@ -86,21 +89,22 @@
         }
 
         public static bool ColorsMatch(int[] color1, int[] color2) {
-            double error = 0;
             if(color1.Length != color2.Length) return false;
+
+            double error = 0;
             for(int i = 0; i < color1.Length; i++) {
-                if(color1[i] != color2[i]) {
-                    error += Math.Abs(Color.FromArgb(color1[i]).GetHue() - Color.FromArgb(color2[i]).GetHue());
-                }
+                error += Math.Abs(Color.FromArgb(color1[i]).GetHue() - Color.FromArgb(color2[i]).GetHue()); ;
             }
-            return (error / 1000.0) < Tolerance;
+            return (error / 1000.0) <= Tolerance;
         }
 
         private static bool RotationExists(List<Tile> tiles, int[] cl) {
             foreach(Tile t in tiles) {
+                int c = 0;
                 for(int i = 0; i < t.ColorArray.Length; i++) {
-                    if(!ColorsMatch(t.ColorArray, cl)) return false;
+                    if(t.ColorArray[i] == cl[i]) c++;
                 }
+                if(c == t.ColorArray.Length) return true;
             }
             return false;
         }
