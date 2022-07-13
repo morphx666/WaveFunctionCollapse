@@ -4,6 +4,7 @@
         public int[] ColorArray;
         public string FileName;
         public int Rotations;
+        public int PrimaryColor;
 
         public Tile(string fileName, Bitmap bitmap, int[] colorArray) {
             FileName = fileName;

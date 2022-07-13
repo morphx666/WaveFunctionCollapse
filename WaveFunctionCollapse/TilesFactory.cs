@@ -1,4 +1,6 @@
-﻿namespace WaveFunctionCollapse {
+﻿using System.Security.Cryptography.Xml;
+
+namespace WaveFunctionCollapse {
     internal class TilesFactory {
         static public double Tolerance = 0.35;
         static readonly List<int[]> ColorsLUT = new();
@@ -19,7 +21,7 @@
                 using(Bitmap bmp = (Bitmap)Image.FromFile(fileName)) {
                     bmp.RotateFlip(rotations[i]);
 
-                    int[] cl = GenerateColorsLUT(bmp);
+                    int[] cl = GetColorsLUT(bmp);
                     if(!RotationExists(tiles, cl)) {
                         FileInfo fi = new(fileName);
                         tiles.Add(new Tile($"{fi.Name} [{rotations[i]}]", (Bitmap)bmp.Clone(), cl));
@@ -27,12 +29,32 @@
                 }
             }
 
-            tiles.ForEach(t => t.Rotations = tiles.Count);
+            tiles.ForEach(t => {
+                t.Rotations = tiles.Count;
+                t.PrimaryColor = GetPrimaryColor(t);
+            });
 
             return tiles;
         }
 
-        private static int[] GenerateColorsLUT(Bitmap bmp) {
+        private static int GetPrimaryColor(Tile t) {
+            Dictionary<int, int> dc = new();
+
+            for(int y = 0; y < t.Bitmap.Height; y++) {
+                for(int x = 0; x < t.Bitmap.Width; x++) {
+                    int c = t.Bitmap.GetPixel(x, y).ToArgb();
+                    if(dc.ContainsKey(c)) {
+                        dc[c]++;
+                    } else {
+                        dc.Add(c, 1);
+                    }
+                }
+            }
+
+            return dc.OrderByDescending(d => d.Value).First().Key;
+        }
+
+        private static int[] GetColorsLUT(Bitmap bmp) {
             int[] result = new int[4];
 
             int[] top = new int[bmp.Width];
@@ -93,7 +115,12 @@
 
             double error = 0;
             for(int i = 0; i < color1.Length; i++) {
-                error += Math.Abs(Color.FromArgb(color1[i]).GetHue() - Color.FromArgb(color2[i]).GetHue()); ;
+                Color c1 = Color.FromArgb(color1[i]);
+                float h1 = c1.GetHue() + c1.GetBrightness() + c1.GetSaturation();
+                Color c2 = Color.FromArgb(color2[i]);
+                float h2 = c2.GetHue() + c2.GetBrightness() + c2.GetSaturation();
+
+                error += Math.Abs(h1 - h2);
             }
             return (error / 1000.0) <= Tolerance;
         }

@@ -29,7 +29,8 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(800, 450);
+            this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(33)))), ((int)(((byte)(33)))), ((int)(((byte)(33)))));
+            this.ClientSize = new System.Drawing.Size(757, 691);
             this.Name = "FormMain";
             this.Text = "Waveform Collapse";
             this.Load += new System.EventHandler(this.FormMain_Load);

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Drawing.Drawing2D;
 
 namespace WaveFunctionCollapse {
@@ -11,8 +12,8 @@ namespace WaveFunctionCollapse {
         readonly List<Tile> tiles = new();
 
         int scale = 2;
-        int gridWidth = 68;
-        int gridHeight = 39;
+        int gridWidth = 66;
+        int gridHeight = 38;
         Cell[,] grid;
 
         public FormMain() {
@@ -25,25 +26,22 @@ namespace WaveFunctionCollapse {
 
             this.Paint += Render;
             this.WindowState = FormWindowState.Maximized;
-
-            this.BackColor = Color.FromArgb(33, 33, 33);
         }
 
         private void FormMain_Load(object sender, EventArgs e) {
             LoadTiles("circuit");
             InitGrid();
             RendererLoop();
-            GeneratorLoop();            
+            GeneratorLoop();
         }
 
         private void GeneratorLoop() {
             if(mode == Modes.Generator) {
                 int f = 0;
                 int mf = tiles.Count / 8;
+                Random rnd = new();
 
                 Task.Run(() => {
-                    Random rnd = new();
-
                     while(true) {
                         List<Cell> avCells = new();
                         foreach(var c in grid) if(!c.Collapsed) avCells.Add(c);
@@ -58,7 +56,21 @@ namespace WaveFunctionCollapse {
                                 Cell selCell = avCells[rnd.Next(avCells.Count)];
                                 List<(Cell cell, int d)> srndCells = GetSurroundingCells(selCell);
 
-                                int ti = rnd.Next(tiles.Count);
+                                int ti = -1;
+                                for(int i = 0; i < 4; i++) {
+                                    int tmpTi = rnd.Next(tiles.Count);
+                                    if(triedTiles.Contains(tmpTi)) continue;
+                                    Tile tmpTile = tiles[tmpTi];
+                                    for(int j = 0; j < srndCells.Count; j++) {
+                                        if(srndCells[j].cell.Collapsed && tmpTile.PrimaryColor == srndCells[j].cell.Tile.PrimaryColor) {
+                                            ti = i;
+                                            goto Skip;
+                                        }
+                                    }
+                                }
+
+                                ti = rnd.Next(tiles.Count);
+                            Skip:
                                 if(triedTiles.Contains(ti)) continue;
                                 triedTiles.Add(ti);
 
@@ -72,7 +84,7 @@ namespace WaveFunctionCollapse {
 
                                     break;
                                 } else if(triedTiles.Count == tiles.Count) {
-                                    (Cell cell, int d) tc = srndCells[rnd.Next(srndCells.Count)];
+                                    (Cell cell, int _) tc = srndCells[rnd.Next(srndCells.Count)];
 
                                     tc.cell.Collapsed = false;
                                     tc.cell.Entropy = tiles.Count - GetSurroundingCells(tc.cell).Count + 1;
